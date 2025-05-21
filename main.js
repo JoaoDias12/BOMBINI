@@ -464,15 +464,44 @@ function removePlayerFromUI(playerId) {
 //////////////////////////////////////
 //////////////////////////////////////
 
+let howManyQuant = 0
+
+async function setupHowMany(roomID) {
+  const snapshot = await database.ref(`rooms/${roomID}`).once('value')
+  const { players } = snapshot.val()
+  const qtdPlayers = Object.keys(players).length
+
+  const configs = {
+    2: { howMany: 36, grid: 6, space: 4.5 },
+    3: { howMany: 49, grid: 7, space: 3.7 },
+    4: { howMany: 64, grid: 8, space: 3.0 },
+    5: { howMany: 81, grid: 9, space: 2.5 },
+    6: { howMany: 100, grid: 10, space: 2.0 },
+    7: { howMany: 121, grid: 11, space: 1.8 },
+    8: { howMany: 144, grid: 12, space: 1.5 }
+  }
+
+  const { howMany, grid, space } = configs[qtdPlayers] || configs[2]
+
+  // 1. Mantém a definição do howManyQuant COMO ESTAVA (sem window.)
+  howManyQuant = howMany
+
+  // 2. **CORREÇÃO PRINCIPAL**: Aplica as variáveis APENAS no .spaces-container
+  const container = document.querySelector('.spaces-container')
+  container.style.setProperty('--space-size', `${space}rem`)
+  container.style.setProperty('--grid-columns', grid)
+}
+
 async function loadSpaces() {
   spaces.innerHTML = ''
+  await setupHowMany(roomID)
 
   const flippedSpacesSnapshot = await database
     .ref(`rooms/${roomID}/gameState/flippedSpaces`)
     .once('value')
   const flippedSpaces = flippedSpacesSnapshot.val() || []
 
-  for (let i = 0; i < 36; i++) {
+  for (let i = 0; i < howManyQuant; i++) {
     const space = document.createElement('div')
     space.className = 'space'
     space.innerHTML = `
@@ -510,8 +539,8 @@ async function loadSpacesClient() {
     .ref(`rooms/${roomID}/gameState/flippedSpaces`)
     .once('value')
   const flippedSpaces = flippedSpacesSnapshot.val() || []
-
-  for (let i = 0; i < 36; i++) {
+  await setupHowMany(roomID)
+  for (let i = 0; i < howManyQuant; i++) {
     const space = document.createElement('div')
     space.className = 'space'
     space.innerHTML = `
@@ -637,9 +666,11 @@ function putClick() {
 }
 
 async function handleBombHit() {
-  let father = document.getElementById(localPlayerId)
-  let lifes = father.querySelectorAll('.life')
+  const father = document.getElementById(localPlayerId)
+  const lifes = father.querySelectorAll('.life')
   const playerRef = database.ref(`rooms/${roomID}/players/${localPlayerId}`)
+
+  // 1. Reduz a vida do jogador
   await playerRef.update({
     lifes: firebase.database.ServerValue.increment(-1)
   })
@@ -647,11 +678,40 @@ async function handleBombHit() {
   if (lifes.length > 0) {
     lifes[lifes.length - 1].remove()
   }
-  // Verifica se o jogador perdeu
+
+  // 2. Verifica se o jogador perdeu
   const snapshot = await playerRef.once('value')
   if (snapshot.val().lifes <= 0) {
+    // Atualiza status do jogador
     await playerRef.update({ isAlive: false })
     turnIndicator.textContent = 'Você Perdeu!'
+
+    // 3. Remove o jogador do playerOrder no Firebase
+    const gameStateRef = database.ref(`rooms/${roomID}/gameState`)
+    await gameStateRef.transaction(currentData => {
+      if (!currentData) return
+
+      // Remove o jogador da ordem de turnos
+      const updatedPlayerOrder = (currentData.playerOrder || []).filter(
+        playerId => playerId !== localPlayerId
+      )
+
+      // Atualiza o currentTurn se necessário
+      let updatedCurrentTurn = currentData.currentTurn
+      if (updatedCurrentTurn >= updatedPlayerOrder.length) {
+        updatedCurrentTurn = 0
+      }
+
+      return {
+        ...currentData,
+        playerOrder: updatedPlayerOrder,
+        currentTurn: updatedCurrentTurn,
+        yourTurn: updatedPlayerOrder[updatedCurrentTurn] || null
+      }
+    })
+
+    // 4. Remove o jogador da UI
+    removePlayerFromUI(localPlayerId)
   }
 }
 
