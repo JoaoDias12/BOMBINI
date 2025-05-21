@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bombini</title>
+
+    <link rel="icon" href="img/bombFull.png" />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="menu">
+      <form action="">
+        <label for="nameInpt">Name :</label>
+        <input autocomplete="off" required id="nameInpt" type="text" />
+
+        <label for="codeInpt">Code :</label>
+        <input autocomplete="off" id="codeInpt" type="text" />
+
+        <input id="submitForm" type="submit" value="Entrar" />
+      </form>
+      <h1>BOMBINI</h1>
+      <img src="img/bombFull.png" alt="" />
+    </div>
+
+    <div id="game" class="hidden">
+      <h2 id="roomCode"></h2>
+      <div id="turnIndicator">Aguardando início do jogo...</div>
+      <button id="btnStart" class="hidden">Iniciar Jogo</button>
+      <div class="spaces"></div>
+      <div class="peoplesLeft"></div>
+      <div class="spaces-container">
+        <div class="spaces"></div>
+      </div>
+    </div>
+  </body>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+  <script src="main.js"></script>
+</html>
